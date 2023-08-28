@@ -5,12 +5,8 @@
  @DateTime: 2023/4/8 14:12
  @SoftWare: PyCharm
 """
-from pymongo import MongoClient
-from pymongo.errors import PyMongoError, ConnectionFailure, CollectionInvalid
 
-from config import mongo_settings
 from log import database_logger
-import pymongo
 
 logger = database_logger
 

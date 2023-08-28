@@ -41,27 +41,18 @@ async def find_note_schema_by_note_query(
     tr = TimeRecord(aid)
     t = tr.mark
 
-    # 是否已经有向量数据
-    coll = NoteColl()
-    mongo_note_schema = coll.find_one(aid=int(aid))
 
-    embedding_service = EmbeddingService()
-    if not mongo_note_schema:
+    if True:
         # 采集视频资源
         crawl_service = CrawlService(aid=aid)
         documents, note_schema = await crawl_service.get_note_caption(t)
         logger.debug(f"aid:{aid}-获取字幕资源完成-cc字幕:{bool(note_schema.View.subtitle['list'])}-耗时{t()}")
-        # 获取向量
-        documents, embedding_total_tk = await embedding_service.get_embedding_list(documents)
-        logger.debug(f'aid:{aid}-请求向量模型完成-消耗tk{embedding_total_tk}-耗时{t()}')
         # 存储向量
         mongo_note_schema = BiliNoteForMongo(
                 **note_schema.View.dict(),
                 documents=documents,
                 create_time=time.time()
             )
-        coll.save_one(mongo_note_schema)
-        logger.debug(f'aid:{aid}-向量存储完成-耗时{t()}')
     return mongo_note_schema
 
 
@@ -83,17 +74,11 @@ async def summary(
     if mongo_note_schema and (summary_response := mongo_note_schema.summary_response):
         return summary_response
 
-    embedding_service = EmbeddingService()
     documents = mongo_note_schema.documents
-    # 获取参照向量
-    mean_embedding = embedding_service.get_reference_vector(documents)
-    logger.debug(f'aid:{aid}-获取参照向量完成-耗时{t()}')
-
-    # 计算top n接近的documents
-    top_n_documents = embedding_service.search_top_n_with_vector_from_documents(mean_embedding, documents, top=80)
+    top_n_documents = documents
+    
     logger.debug(f'aid:{aid}-搜索概要语料完成-耗时{t()}')
 
-    # 生成概要
     gpt_service = GPTService()
     note_view_schema = mongo_note_schema
     prompt_helper = gpt_service.get_summary_1(
@@ -115,8 +100,6 @@ async def summary(
         'embedding_total_tk': embedding_total_tk,
         'summary_total_tk': prompt_helper.total_tk
     }
-    # 缓存结果
-    bt.add_task(NoteColl().update_response, int(aid), res)
     return res
 
 

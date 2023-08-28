@@ -143,6 +143,7 @@ class GPTService:
                 title=note_schema.title,
                 documents=documents,
                 config=config,
+                desc=note_schema.desc
             )
         )
         chat_with_3dot5(self.prompt_helper)

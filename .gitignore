@@ -16,5 +16,6 @@ __pycache__/
 
 *.mp3
 
-env/
+venv/
 config.ini
+data.db

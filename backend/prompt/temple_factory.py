@@ -31,7 +31,7 @@ class SummaryPromptFactory(PromptFactory):
         return prompt
 
     def get_user_content(
-            self, title, documents: List[Document], config: SummaryConfig, desc='',
+            self, title, documents: List[Document], config: SummaryConfig, desc,
     ):
         if config.emoji_show:
             emoji_template_text = '[Emoji] '
@@ -56,6 +56,7 @@ class SummaryPromptFactory(PromptFactory):
             video_title=title,
             video_transcript=transcript,
             prompt=user_prompt,
+            desc=desc
         )
         return prompt
 

@@ -7,10 +7,7 @@
 """
 from typing import List, Optional
 
-import pymongo
-from pymongo.collection import Collection
 
-from database.mongo import DBManager
 from database.schema import BiliNoteForMongo
 
 

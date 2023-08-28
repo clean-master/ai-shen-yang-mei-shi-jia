@@ -49,7 +49,7 @@ class TokenMixin:
 class GPT3dot5PromptHelper(TokenMixin):
 
     model = 'gpt-3.5-turbo'
-    max_tk = 4096 - 1024
+    max_tk = 114514
 
     def __init__(self):
         super().__init__()

@@ -20,24 +20,17 @@ chatWeb_summary_temple = {
 BibiGPT_summary_temple = {
     'system': (
         "I want you to act as an educational content creator. "
-        "You will help students summarize the essence of the video in {language}. "
+        "You will help students summarize the 笑点 of the funny video in {language}. "
         "Please summarize the video subtitles (there may be typos in the subtitles, "
-        "please correct them) and return them in an unordered list format."
+        "please correct them)."
         "Please do not exceed {sentence_count} items, "
-        "and make sure not to repeat any sentences and all sentences are concise, clear, and complete. Good luck!"
+        "and make sure not to repeat any sentences and all sentences are educational,concise, clear, and complete. Good luck!"
     ),
     'user': (
-        """Title: "{video_title}"\nTranscript: "{video_transcript}"\n\nInstructions: {prompt}"""
+        """Title: "{video_title}"\ndesc: "{desc}"\nTranscript: "{video_transcript}"\n\nInstructions: {prompt}"""
     ),
     'user_prompt': (
-        """Your output should use the following template:\n
-        ## Summary\n
-        ## Highlights\n
-        - {emoji_template_text}Bullet point{outline_template_text}\n\n
-        Your task is to summarise the text I have given you in up to {sentence_count} concise bullet points, 
-        starting with a short highlight, each bullet point is at least {words_count} words. 
-        {emoji_template_text}{outline_template_text}Use the text above(Content relevance order from highest to lowest): {title}\n{desc}\n{transcript}.\n\n
-        Reply in {language} Language."""
+        """用一段话解析如下搞笑视频的笑点，以“笑点解析：”开头，以“令人忍俊不禁。”作为结尾"""
     )
 }
 

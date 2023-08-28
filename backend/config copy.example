@@ -1,0 +1,19 @@
+[mongo]
+host = localhost
+username =
+password =
+port = 27017
+db_name = chat2Bili
+
+[openai]
+api_key = your-openai-api-key
+
+[service]
+host = 127.0.0.1
+port = 9090
+
+[other]
+debug = True  
+proxy = 127.0.0.1:7890
+bili_cookie = SESSDATA=xxxxxxxxxxxxxx
+some_config = ...

@@ -41,7 +41,7 @@ class Logging:
         self._logger = logging.getLogger(self.log_file_name)
 
         # 设置控制台日志的输出级别: 级别排序:CRITICAL > ERROR > WARNING > INFO > DEBUG
-        if config.debug is True:
+        if True:#config.debug is True:
             self.set_console_logger()
             self._logger.setLevel(logging.DEBUG)  # 大于info级别的日志信息都会被输出
         else:

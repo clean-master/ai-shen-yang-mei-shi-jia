@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-shen-yang-mei-shi-jia"
+version = "0.1.0"
+description = "Bilibili auto-reply bot with AI summary"
+requires-python = ">=3.10"
+dependencies = [
+    "bilibili-api-python>=16.0.0",
+    "curl_cffi>=0.7.0",
+    "aiosqlite>=0.20.0",
+    "google-genai>=0.4.0",
+    "pydantic>=2.0",
+    "ffmpeg-python>=0.2.0",
+    "python-dotenv>=1.0.0",
+    "pysenseword>=1.0.0",
+    "fastapi>=0.115.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyright>=1.1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

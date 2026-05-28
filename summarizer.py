@@ -6,7 +6,7 @@ from bilibili_api import video as bili_video
 from bilibili_api import Credential
 from bilibili_api.opus import Opus
 
-from api_clients import DoubaoClient, LLMClient
+from api_clients import DeepSeekClient, DoubaoClient, LLMClient
 from audio2text import get_subtitle_from_bv
 from getvideo import download_video
 from screenshot import extract_screenshots
@@ -21,6 +21,7 @@ from prompts import (
 logger = logging.getLogger(__name__)
 
 llm_client: LLMClient = DoubaoClient()
+moderation_client: LLMClient = DeepSeekClient()
 
 
 def _parse_moderation_response(response: str) -> tuple[bool, str]:
@@ -85,10 +86,10 @@ async def _fetch_opus_data(opus_id: int, credential: Credential) -> tuple[str, l
 
 
 async def moderate_summary(
-    conn: aiosqlite.Connection, text: str, content_type: str,
+    conn: aiosqlite.Connection, text: str, content_type: str, source_url: str | None = None,
 ) -> str | None:
     import time
-    moderation_result = await llm_client.generate(
+    moderation_result = await moderation_client.generate(
         prompt=MODERATION_PROMPT + text,
         max_tokens=200,
     )
@@ -98,8 +99,8 @@ async def moderate_summary(
     if not is_safe:
         logger.warning("审核不通过，跳过发送: %s", reason)
         await conn.execute(
-            "INSERT INTO rejected_content (created_at, reason, content, content_type) VALUES (?, ?, ?, ?)",
-            (time.time(), reason, text, content_type),
+            "INSERT INTO rejected_content (created_at, reason, content, content_type, source_url) VALUES (?, ?, ?, ?, ?)",
+            (time.time(), reason, text, content_type, source_url),
         )
         await conn.commit()
         return None
@@ -131,11 +132,21 @@ async def get_summary_from_video(bv_number: str) -> str:
             cover = "https://" + cover[7:]
         if cover and not cover.rsplit("/", 1)[-1].split("?")[0].endswith((".jpg", ".jpeg", ".png", ".webp")):
             cover += ".jpg"
+        tag_names: list[str] = []
+        try:
+            tags = await v.get_tags()
+            tag_names = [t.get("tag_name", "") for t in tags if t.get("tag_name")]
+            logger.info("视频标签: %s", tag_names)
+        except Exception:
+            logger.warning("获取视频标签失败，继续")
+
         parts = []
         if title:
             parts.append(f"视频标题：{title}")
         if owner:
             parts.append(f"UP主：{owner}")
+        if tag_names:
+            parts.append(f"视频标签：{'、'.join(tag_names)}")
         if desc:
             parts.append(f"视频简介：{desc}")
         if subtitle:

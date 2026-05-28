@@ -12,7 +12,7 @@ from settings import settings
 logger = logging.getLogger(__name__)
 
 DOUBAO_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
-DEEPSEEK_BASE_URL = "https://api.siliconflow.cn/v1"
+DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 REQUEST_TIMEOUT = 60
 
 
@@ -107,6 +107,7 @@ class DeepSeekClient(LLMClient):
             "top_p": 0.7,
             "top_k": 50,
             "frequency_penalty": 0,
+            "thinking": {"type": "enabled"},
             "messages": [{"role": "user", "content": prompt}],
         }
         logger.info("[DeepSeek] 发送请求: prompt_len=%d", len(prompt))

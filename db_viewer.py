@@ -259,6 +259,7 @@ def build_page(db_path: str, table_name: str, page: int) -> str:
         rows_data = cursor.fetchall()
 
         timestamp_cols = [i for i, c in enumerate(col_names) if c in ("created_at", "sent_at") or c.endswith("_at")]
+        url_cols = {i for i, c in enumerate(col_names) if c == "source_url" or c.endswith("_url")}
 
         headers = "".join(f"<th>{c}</th>" for c in col_names)
         if rows_data:
@@ -272,7 +273,10 @@ def build_page(db_path: str, table_name: str, page: int) -> str:
                             v = dt.strftime("%Y-%m-%d %H:%M:%S")
                         except (ValueError, OSError, OverflowError):
                             pass
-                    cells.append(f"<td>{v}</td>")
+                    if i in url_cols and v:
+                        cells.append(f'<td><a href="{v}" target="_blank" rel="noopener">{v}</a></td>')
+                    else:
+                        cells.append(f"<td>{v}</td>")
                 row_html += "<tr>" + "".join(cells) + "</tr>"
         else:
             row_html = '<tr><td class="empty" colspan="{}">（空）</td></tr>'.format(len(col_names))

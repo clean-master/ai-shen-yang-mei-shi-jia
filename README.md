@@ -46,7 +46,7 @@ cp .env.example .env
 | `DOUBAO_API_KEY` | 火山引擎豆包 API Key（主要 LLM） | 必填 |
 | `DOUBAO_MODEL` | 火山引擎模型端点 ID | 必填 |
 | `DEEPSEEK_API_KEY` | DeepSeek API Key（via SiliconFlow） | 选填 |
-| `DEEPSEEK_MODEL` | DeepSeek 模型名称（默认 `Pro/deepseek-ai/DeepSeek-V3`） | 选填 |
+| `DEEPSEEK_MODEL` | DeepSeek 模型名称（默认 `deepseek-v4-pro`） | 选填 |
 | `GEMINI_API_KEY` | Google Gemini API Key（多模态备选） | 选填 |
 | `MAX_AT_COUNT` | 单条消息允许的最大 @ 数量，超出则忽略（防滥用）；`0` 表示不限制，默认 `3` | 选填 |
 

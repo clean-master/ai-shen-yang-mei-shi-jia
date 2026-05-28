@@ -90,7 +90,7 @@ async def process_video(
         logger.info("aid=%s 已处理过，跳过", aid)
         return
     summary = await get_summary_from_video(bvid)
-    summary = await moderate_summary(conn, summary, "video")
+    summary = await moderate_summary(conn, summary, "video", f"https://www.bilibili.com/video/{bvid}")
     if summary is None:
         summary = FALLBACK_SUMMARY
     summary = f"{summary}\n@{user_nickname} 问的。"
@@ -132,7 +132,7 @@ async def process_dynamic(
         logger.info("aid=%s 已处理过，跳过", aid)
         return
     summary = await get_summary_from_dynamic(dynamic_text, image_urls=image_urls)
-    summary = await moderate_summary(conn, summary, "dynamic")
+    summary = await moderate_summary(conn, summary, "dynamic", f"https://www.bilibili.com/opus/{opus_id}")
     if summary is None:
         summary = FALLBACK_SUMMARY
     summary = f"{summary}\n@{user_nickname} 问的。"

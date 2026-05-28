@@ -23,7 +23,7 @@ async def init_db():
     )
     await cursor.execute(
         "CREATE TABLE IF NOT EXISTS rejected_content "
-        "(id INTEGER PRIMARY KEY AUTOINCREMENT, created_at REAL, reason TEXT, content TEXT, content_type TEXT)"
+        "(id INTEGER PRIMARY KEY AUTOINCREMENT, created_at REAL, reason TEXT, content TEXT, content_type TEXT, source_url TEXT)"
     )
     await conn.commit()
     return conn

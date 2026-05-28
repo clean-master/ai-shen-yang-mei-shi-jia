@@ -18,7 +18,7 @@ class Settings:
         self.deepseek_api_key = os.environ.get("DEEPSEEK_API_KEY")
         self.gemini_api_key = os.environ.get("GEMINI_API_KEY")
         self.doubao_model = os.environ.get("DOUBAO_MODEL", "")
-        self.deepseek_model = os.environ.get("DEEPSEEK_MODEL", "Pro/deepseek-ai/DeepSeek-V3")
+        self.deepseek_model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-pro")
         self.max_at_count = int(os.environ.get("MAX_AT_COUNT", "3"))
 
     @property

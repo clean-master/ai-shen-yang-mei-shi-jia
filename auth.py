@@ -61,7 +61,8 @@ async def do_login() -> None:
 
     credential = qr.get_credential()
     cookies = credential.get_cookies()
-    logger.info("获取到 Cookie: %s", {k: v[:10] + "..." for k, v in cookies.items()})
+    logger.info("获取到 Cookie: %s", {
+                k: v[:10] + "..." for k, v in cookies.items()})
 
     save_cookies_to_env(cookies)
     print("\n登录成功！凭据已保存到 .env 文件。")

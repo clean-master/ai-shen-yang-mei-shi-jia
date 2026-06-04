@@ -18,12 +18,17 @@ class Settings:
         self.deepseek_api_key = os.environ.get("DEEPSEEK_API_KEY")
         self.gemini_api_key = os.environ.get("GEMINI_API_KEY")
         self.doubao_model = os.environ.get("DOUBAO_MODEL", "")
-        self.deepseek_model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-pro")
-        self.max_at_count = int(os.environ.get("MAX_AT_COUNT", "3"))
+        self.deepseek_model = os.environ.get(
+            "DEEPSEEK_MODEL", "deepseek-v4-pro")
+        try:
+            self.max_at_count = int(os.environ.get("MAX_AT_COUNT", "3"))
+        except ValueError:
+            logger.warning("MAX_AT_COUNT 配置值无效，回退使用默认值 3")
+            self.max_at_count = 3
 
     @property
     def is_configured(self) -> bool:
-        return bool(self.sessdata and self.bili_jct and self.doubao_api_key)
+        return bool(self.sessdata and self.bili_jct and self.doubao_api_key and self.doubao_model)
 
     def validate(self):
         required = {

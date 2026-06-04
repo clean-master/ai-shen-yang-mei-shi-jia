@@ -221,7 +221,7 @@ class BcutASR:
             raise ValueError("none set data")
         resp = self.session.post(
             API_REQ_UPLOAD,
-            headers = {
+            headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "Cache-Control": "no-cache",
             },
@@ -270,7 +270,7 @@ class BcutASR:
         "提交上传数据"
         resp = self.session.post(
             API_COMMIT_UPLOAD,
-            headers = {
+            headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "Cache-Control": "no-cache",
             },
@@ -295,7 +295,7 @@ class BcutASR:
         "开始创建转换任务"
         resp = self.session.post(
             API_CREATE_TASK,
-            headers = {
+            headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "Cache-Control": "no-cache",
             },
@@ -315,7 +315,7 @@ class BcutASR:
         "查询转换结果"
         resp = self.session.get(
             API_QUERY_RESULT,
-            headers = {
+            headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "Cache-Control": "no-cache",
             },

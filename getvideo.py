@@ -41,7 +41,8 @@ def get_video_from_bv(bv_number: str) -> str | None:
         logger.error("yutto command failed with return code %s", e.returncode)
         return None
     except FileNotFoundError:
-        logger.error("yutto not found. Please install yutto and ensure it's in PATH")
+        logger.error(
+            "yutto not found. Please install yutto and ensure it's in PATH")
         return None
     except Exception:
         logger.exception("Unexpected error in get_video_from_bv")

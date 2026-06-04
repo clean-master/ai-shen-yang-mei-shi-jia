@@ -11,7 +11,7 @@
 - **多来源解析** — 支持 BV 号视频、Opus 动态 ID 和纯文本动态
 - **视频转写** — 优先下载字幕，无字幕时自动使用必剪 ASR 语音识别兜底
 - **多模态 AI 生成** — 调用豆包、DeepSeek 或 Gemini，生成「笑点解析」风格回复
-- **内容审核** — AI 安全审查 + 132k+ 词条的敏感词过滤
+- **内容审核** — AI 安全审查 + DFA 78k 词条 + PCRE 正则 3k，双引擎并行过滤
 - **消息去重** — SQLite 记录已处理 ID，防止重复回复
 - **测试模式** — 本地跑通完整流程，不实际发送任何评论或私信
 
@@ -45,7 +45,7 @@ cp .env.example .env
 | `BILI_BUVID3` | B站设备 ID | 选填 |
 | `DOUBAO_API_KEY` | 火山引擎豆包 API Key（主要 LLM） | 必填 |
 | `DOUBAO_MODEL` | 火山引擎模型端点 ID | 必填 |
-| `DEEPSEEK_API_KEY` | DeepSeek API Key（via SiliconFlow） | 选填 |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key | 选填 |
 | `DEEPSEEK_MODEL` | DeepSeek 模型名称（默认 `deepseek-v4-pro`） | 选填 |
 | `GEMINI_API_KEY` | Google Gemini API Key（多模态备选） | 选填 |
 | `MAX_AT_COUNT` | 单条消息允许的最大 @ 数量，超出则忽略（防滥用）；`0` 表示不限制，默认 `3` | 选填 |
@@ -98,6 +98,7 @@ python main.py [选项]
   --dynamic-text TEXT      直接处理指定文本动态（跳过轮询）
   --opus OPUS_ID           直接处理指定 Opus ID 动态（跳过轮询）
   --uid UID                指定私信接收者 UID（配合以上三项使用）
+  --display                测试模式下用 display 命令展示裁剪后的封面图（需安装 ImageMagick）
 ```
 
 ### 行为速查
@@ -151,21 +152,27 @@ AI 安全审查 + 敏感词过滤
 ├── audio2text.py         # 字幕下载 + ASR 语音识别
 ├── getvideo.py           # yutto 视频下载
 ├── screenshot.py         # ffmpeg 视频截帧
-├── sensitive_filter.py   # DFA 敏感词过滤
+├── sensitive_filter.py   # DFA + PCRE 双引擎敏感词过滤
 ├── video_id_transform.py # BV 号与 AV 号互转
 ├── bcut_asr/             # 必剪语音识别模块
-├── Vocabulary/           # 敏感词库（需自行准备，见下方说明）
+├── vocabulary/           # 敏感词库（需自行准备，见下方说明）
 ├── .env.example          # 环境变量模板
 └── pyproject.toml        # 包元数据与依赖声明
 ```
 
 ## 敏感词库
 
-`Vocabulary/` 目录用于存放敏感词过滤的词库文件（`.txt`，每行一个词）。本项目使用 DFA 算法进行高效匹配，词库越大性能影响越小。
+`vocabulary/` 目录下分两个子目录，双引擎并行工作：
+
+- `dfa/` — DFA 精确匹配词库（`.txt`，每行一个词），使用 pysenseword 的 DFA 算法
+- `pcre/` — PCRE 正则匹配词库（`.txt`，每行一条 PCRE 正则），使用 PyPcre 引擎
+
+`check()` 先走 DFA（快速），未命中再走 PCRE。匹配优先级 DFA > PCRE。
 
 **本仓库不包含词库文件**，需自行准备。可参考以下来源：
 
 - 各平台公开的敏感词库（腾讯、网易等）
 - 自行整理的业务相关词汇
+- 网易游戏聊天过滤正则词库
 
-将 `.txt` 文件放入 `Vocabulary/` 目录即可，`sensitive_filter.py` 会自动加载所有 `.txt` 文件。
+将 `.txt` 文件放入对应子目录即可，`sensitive_filter.py` 会自动加载。

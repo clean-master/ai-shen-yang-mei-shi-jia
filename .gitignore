@@ -55,5 +55,3 @@ tmp/
 
 # Logs
 *.log
-
-# Sensitive word lexicon (tracked by git; excluded from VS Code search via .vscode/settings.json)

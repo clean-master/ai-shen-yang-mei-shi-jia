@@ -1,19 +1,23 @@
 import argparse
 import asyncio
 import logging
+import os
+import subprocess
 import sys
+import tempfile
 
 from bilibili_api import Credential, session
 from bilibili_api.comment import CommentResourceType
 from bilibili_api.opus import Opus
 from bilibili_api.session import EventType
 
+from actions import send_comment_safe, send_msg_safe
 from api_clients import APIError
 from auth import do_login
-from db import init_db, is_already_processed, send_comment_safe, send_msg_safe
+from db import check_and_mark_processed, init_db, is_processed
 from prompts import FALLBACK_SUMMARY
 from settings import settings
-from summarizer import _fetch_opus_data, get_summary_from_dynamic, get_summary_from_video, moderate_summary
+from summarizer import fetch_opus_data, get_cover_picture, get_summary_from_dynamic, get_summary_from_video, moderate_summary
 from tmp import clean_tmp
 
 import video_id_transform
@@ -31,6 +35,20 @@ def _make_credential() -> Credential:
         bili_jct=settings.bili_jct,
         buvid3=settings.buvid3 or None,
     )
+
+
+def _display_picture(pic) -> None:
+    """用 ImageMagick 的 display 命令展示图片。"""
+    suffix = f".{pic.imageType}" if pic.imageType else ".jpg"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
+        f.write(pic.content)
+        tmp_path = f.name
+    try:
+        logger.info("[display] 展示图片: %s (%dx%d)",
+                    tmp_path, pic.width, pic.height)
+        subprocess.run(["display", tmp_path], check=False)
+    finally:
+        os.unlink(tmp_path)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -72,6 +90,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="扫码登录 Bilibili，将凭据保存到 .env 文件",
     )
+    parser.add_argument(
+        "--display",
+        action="store_true",
+        help="测试模式下用 display 命令展示裁剪后的封面图（需安装 ImageMagick）",
+    )
     return parser
 
 
@@ -82,18 +105,30 @@ async def process_video(
     user_nickname: str,
     dry_run: bool,
     target_uid: int = 0,
+    display: bool = False,
 ):
     aid = video_id_transform.note_query_2_aid(bvid)
     logger.info("处理视频: %s aid=%s user=%s", bvid, aid, user_nickname)
 
-    if not dry_run and await is_already_processed(conn, aid):
+    if not dry_run and await is_processed(conn, aid):
         logger.info("aid=%s 已处理过，跳过", aid)
         return
     summary = await get_summary_from_video(bvid)
     summary = await moderate_summary(conn, summary, "video", f"https://www.bilibili.com/video/{bvid}")
-    if summary is None:
+    is_fallback = summary is None
+    if is_fallback:
         summary = FALLBACK_SUMMARY
+    # 前置标记：审核通过或兜底后立即标记已处理，避免发送评论失败导致死循环
+    if not dry_run:
+        await check_and_mark_processed(conn, aid)
     summary = f"{summary}\n@{user_nickname} 问的。"
+
+    cover_pic = await get_cover_picture(bvid)
+    if is_fallback:
+        cover_pic = None
+
+    if display and cover_pic is not None:
+        _display_picture(cover_pic)
 
     await send_comment_safe(
         conn,
@@ -102,6 +137,7 @@ async def process_video(
         oid=bvid,
         credential=credential,
         dry_run=dry_run,
+        pic=cover_pic,
     )
 
     summary = f"{summary}\nhttps://www.bilibili.com/video/{bvid}"
@@ -128,13 +164,15 @@ async def process_dynamic(
     aid = await op.get_rid()
     logger.info("[动态] get_rid 成功: opus_id=%d → aid=%s", opus_id, aid)
 
-    if not dry_run and await is_already_processed(conn, aid):
+    if not dry_run and await is_processed(conn, aid):
         logger.info("aid=%s 已处理过，跳过", aid)
         return
     summary = await get_summary_from_dynamic(dynamic_text, image_urls=image_urls)
     summary = await moderate_summary(conn, summary, "dynamic", f"https://www.bilibili.com/opus/{opus_id}")
     if summary is None:
         summary = FALLBACK_SUMMARY
+    if not dry_run:
+        await check_and_mark_processed(conn, aid)
     summary = f"{summary}\n@{user_nickname} 问的。"
 
     await send_comment_safe(
@@ -163,7 +201,7 @@ async def process_dynamic(
     )
 
 
-async def main_loop(dry_run: bool = False):
+async def main_loop(dry_run: bool = False, display: bool = False):
     conn = await init_db()
     try:
         credential = _make_credential()
@@ -204,16 +242,18 @@ async def main_loop(dry_run: bool = False):
                 if "BV" in uri:
                     bvid = "BV" + uri.split("BV")[1]
                     await process_video(
-                        conn, credential, bvid, user_nickname, dry_run, target_uid=mid
+                        conn, credential, bvid, user_nickname, dry_run, target_uid=mid, display=display,
                     )
                 elif "opus/" in uri or "https://t.bilibili.com/" in uri:
                     if "opus/" in uri:
-                        opus_id_num = int(uri.rsplit("opus/", 1)[-1].split("?")[0])
+                        opus_id_num = int(uri.rsplit(
+                            "opus/", 1)[-1].split("?")[0])
                     else:
                         opus_id_str = uri.split("https://t.bilibili.com/")[1]
-                        opus_id_num = int(opus_id_str.strip("/").split("/")[-1])
+                        opus_id_num = int(
+                            opus_id_str.strip("/").split("/")[-1])
                     logger.info("[动态] uri=%s → opus_id=%d", uri, opus_id_num)
-                    dynamic_text, image_urls = await _fetch_opus_data(opus_id_num, credential)
+                    dynamic_text, image_urls = await fetch_opus_data(opus_id_num, credential)
                     await process_dynamic(
                         conn, credential, opus_id_num, user_nickname, dynamic_text,
                         dry_run, target_uid=mid, image_urls=image_urls or None,
@@ -242,12 +282,12 @@ async def main_loop(dry_run: bool = False):
         await conn.close()
 
 
-async def main_bv(bvid: str, dry_run: bool = False, target_uid: int = 0):
+async def main_bv(bvid: str, dry_run: bool = False, target_uid: int = 0, display: bool = False):
     conn = await init_db()
     try:
         credential = _make_credential()
         await process_video(
-            conn, credential, bvid, "CLI用户", dry_run, target_uid=target_uid
+            conn, credential, bvid, "CLI用户", dry_run, target_uid=target_uid, display=display,
         )
     finally:
         await conn.close()
@@ -268,7 +308,7 @@ async def main_opus(opus_id: int, dry_run: bool = False, target_uid: int = 0):
     conn = await init_db()
     try:
         credential = _make_credential()
-        dynamic_text, image_urls = await _fetch_opus_data(opus_id, credential)
+        dynamic_text, image_urls = await fetch_opus_data(opus_id, credential)
         await process_dynamic(
             conn, credential, opus_id, "CLI用户", dynamic_text,
             dry_run, target_uid=target_uid, image_urls=image_urls or None,
@@ -298,11 +338,11 @@ async def main():
     if args.opus:
         await main_opus(args.opus, dry_run=args.dry_run, target_uid=args.uid)
     elif args.bv:
-        await main_bv(args.bv, dry_run=args.dry_run, target_uid=args.uid)
+        await main_bv(args.bv, dry_run=args.dry_run, target_uid=args.uid, display=args.display)
     elif args.dynamic_text:
         await main_dynamic(args.dynamic_text, dry_run=args.dry_run, target_uid=args.uid)
     else:
-        await main_loop(dry_run=args.dry_run)
+        await main_loop(dry_run=args.dry_run, display=args.display)
 
 
 if __name__ == "__main__":

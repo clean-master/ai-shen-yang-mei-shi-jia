@@ -24,12 +24,41 @@ class LLMClient(ABC):
     supports_multimodal: bool = False
 
     @abstractmethod
-    async def generate(
+    async def _do_generate(
         self,
         prompt: str,
         images: list[str] | None = None,
         max_tokens: int = 1000,
     ) -> str: ...
+
+    async def _retry_generate(
+        self,
+        prompt: str,
+        images: list[str] | None = None,
+        max_tokens: int = 1000,
+    ) -> str:
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                return await self._do_generate(prompt, images, max_tokens)
+            except (APIError, TimeoutError) as exc:
+                last_exc = exc
+                if attempt < 2:
+                    wait = 2 ** attempt
+                    logger.warning(
+                        "[%s] 第 %d 次重试（%ds 后），原因: %s",
+                        type(self).__name__, attempt + 1, wait, exc,
+                    )
+                    await asyncio.sleep(wait)
+        raise last_exc  # type: ignore[misc]
+
+    async def generate(
+        self,
+        prompt: str,
+        images: list[str] | None = None,
+        max_tokens: int = 1000,
+    ) -> str:
+        return await self._retry_generate(prompt, images, max_tokens)
 
 
 class DoubaoClient(LLMClient):
@@ -42,7 +71,7 @@ class DoubaoClient(LLMClient):
             "Content-Type": "application/json",
         }
 
-    async def generate(
+    async def _do_generate(
         self,
         prompt: str,
         images: list[str] | None = None,
@@ -52,7 +81,8 @@ class DoubaoClient(LLMClient):
 
         if images:
             for img in images:
-                content_parts.append({"type": "image_url", "image_url": {"url": img}})
+                content_parts.append(
+                    {"type": "image_url", "image_url": {"url": img}})
 
         content_parts.append({"type": "text", "text": prompt})
 
@@ -93,7 +123,7 @@ class DeepSeekClient(LLMClient):
             "Content-Type": "application/json",
         }
 
-    async def generate(
+    async def _do_generate(
         self,
         prompt: str,
         images: list[str] | None = None,
@@ -135,7 +165,7 @@ class GeminiClient(LLMClient):
         self.api_key = settings.gemini_api_key
         self._client = genai.Client(api_key=self.api_key)
 
-    async def generate(
+    async def _do_generate(
         self,
         prompt: str,
         images: list[str] | None = None,
@@ -163,6 +193,7 @@ class GeminiClient(LLMClient):
                 contents=contents,
             )
 
-        logger.info("[Gemini] 发送请求: images=%d prompt_len=%d", len(images) if images else 0, len(prompt))
+        logger.info("[Gemini] 发送请求: images=%d prompt_len=%d",
+                    len(images) if images else 0, len(prompt))
         response = await loop.run_in_executor(None, _generate)
         return response.text

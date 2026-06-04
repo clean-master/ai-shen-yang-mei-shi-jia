@@ -223,7 +223,8 @@ TABLE_HTML = """<h2>{name} <span class="count">({count} 行)</span></h2>
 
 def _get_valid_tables(cursor: sqlite3.Cursor) -> set[str]:
     """从 sqlite_master 获取合法表名白名单。"""
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
     return {row[0] for row in cursor.fetchall()}
 
 
@@ -254,12 +255,15 @@ def build_page(db_path: str, table_name: str, page: int) -> str:
         page = max(1, min(page, total_pages))
         offset = (page - 1) * ROWS_PER_PAGE
 
-        cursor.execute(f'SELECT * FROM "{table_name}" LIMIT ? OFFSET ?', (ROWS_PER_PAGE, offset))
+        cursor.execute(
+            f'SELECT * FROM "{table_name}" LIMIT ? OFFSET ?', (ROWS_PER_PAGE, offset))
         col_names = [desc[0] for desc in cursor.description]
         rows_data = cursor.fetchall()
 
-        timestamp_cols = [i for i, c in enumerate(col_names) if c in ("created_at", "sent_at") or c.endswith("_at")]
-        url_cols = {i for i, c in enumerate(col_names) if c == "source_url" or c.endswith("_url")}
+        timestamp_cols = [i for i, c in enumerate(col_names) if c in (
+            "created_at", "sent_at") or c.endswith("_at")]
+        url_cols = {i for i, c in enumerate(
+            col_names) if c == "source_url" or c.endswith("_url")}
 
         headers = "".join(f"<th>{c}</th>" for c in col_names)
         if rows_data:
@@ -274,12 +278,14 @@ def build_page(db_path: str, table_name: str, page: int) -> str:
                         except (ValueError, OSError, OverflowError):
                             pass
                     if i in url_cols and v:
-                        cells.append(f'<td><a href="{v}" target="_blank" rel="noopener">{v}</a></td>')
+                        cells.append(
+                            f'<td><a href="{v}" target="_blank" rel="noopener">{v}</a></td>')
                     else:
                         cells.append(f"<td>{v}</td>")
                 row_html += "<tr>" + "".join(cells) + "</tr>"
         else:
-            row_html = '<tr><td class="empty" colspan="{}">（空）</td></tr>'.format(len(col_names))
+            row_html = '<tr><td class="empty" colspan="{}">（空）</td></tr>'.format(
+                len(col_names))
 
         prev_link = f"/?table={table_name}&page={page - 1}" if page > 1 else ""
         next_link = f"/?table={table_name}&page={page + 1}" if page < total_pages else ""

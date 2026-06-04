@@ -17,13 +17,17 @@ logger = logging.getLogger(__name__)
 def _get_video_duration(video_path: str) -> float:
     cmd = [
         "ffprobe",
-        "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
         video_path,
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True)
         return float(result.stdout.strip())
     except (subprocess.CalledProcessError, ValueError) as e:
         logger.warning("获取视频时长失败: %s，回退到 0", e)
@@ -46,7 +50,7 @@ def _generate_timestamps(duration: float) -> list[float]:
     if duration < 60:
         return [duration / 2]
 
-    base_positions = [0.10, 0.50, 0.90]
+    base_positions = [0.25, 0.50, 0.75]
     timestamps: list[float] = []
     for ratio in base_positions:
         jitter = (random.uniform(-0.05, 0.05)) * duration
@@ -72,10 +76,14 @@ def extract_screenshots(video_path: str) -> list[dict]:
 
         cmd = [
             "ffmpeg",
-            "-ss", str(ts),
-            "-i", video_path,
-            "-vframes", "1",
-            "-q:v", "3",
+            "-ss",
+            str(ts),
+            "-i",
+            video_path,
+            "-vframes",
+            "1",
+            "-q:v",
+            "3",
             "-y",
             out_path,
         ]
@@ -88,14 +96,20 @@ def extract_screenshots(video_path: str) -> list[dict]:
                 img_data = base64.b64encode(f.read()).decode("ascii")
             base64_uri = f"data:image/jpeg;base64,{img_data}"
 
-            screenshots.append({
-                "path": out_path,
-                "base64": base64_uri,
-                "timestamp": ts,
-                "label": label,
-            })
+            screenshots.append(
+                {
+                    "path": out_path,
+                    "base64": base64_uri,
+                    "timestamp": ts,
+                    "label": label,
+                }
+            )
         except subprocess.CalledProcessError as e:
-            logger.error("截图失败 (时间点 %s): %s", label, e.stderr.decode(errors="replace")[:200])
+            logger.error(
+                "截图失败 (时间点 %s): %s",
+                label,
+                e.stderr.decode(errors="replace")[:200],
+            )
         except FileNotFoundError:
             logger.error("ffmpeg 未安装，无法截图")
             break
@@ -106,6 +120,7 @@ def extract_screenshots(video_path: str) -> list[dict]:
 
 if __name__ == "__main__":
     import sys
+
     logging.basicConfig(level=logging.INFO)
 
     if len(sys.argv) < 2:
@@ -114,4 +129,7 @@ if __name__ == "__main__":
 
     results = extract_screenshots(sys.argv[1])
     for r in results:
-        logger.info("%s → %s (base64: %d chars)", r['label'], r['path'], len(r['base64']))
+        logger.info(
+            "%s → %s (base64: %d chars)", r["label"], r["path"], len(
+                r["base64"])
+        )

@@ -32,7 +32,8 @@ def get_subtitle_from_bv(bv_number):
         srt_files = glob.glob(os.path.join(tmp_dir, "*.srt"))
 
         if not srt_files:
-            logger.warning("No srt files found in temp dir, falling back to ASR")
+            logger.warning(
+                "No srt files found in temp dir, falling back to ASR")
             return audio2text(bv_number)
 
         cn_files = [f for f in srt_files if f.endswith(".中文.srt")]
@@ -55,7 +56,8 @@ def get_subtitle_from_bv(bv_number):
         logger.error("yutto command failed with return code %s", e.returncode)
         return None
     except FileNotFoundError:
-        logger.error("yutto not found. Please install yutto and ensure it's in PATH")
+        logger.error(
+            "yutto not found. Please install yutto and ensure it's in PATH")
         return None
     except Exception as e:
         logger.exception("Unexpected error in get_subtitle_from_bv")
@@ -92,7 +94,8 @@ def audio2text(bv_number):
     ]
 
     try:
-        subprocess.run(audio_command, capture_output=True, text=True, check=True)
+        subprocess.run(audio_command, capture_output=True,
+                       text=True, check=True)
         logger.info("Audio download succeeded")
 
         m4a_files = glob.glob(os.path.join(tmp_dir, "*.m4a"))

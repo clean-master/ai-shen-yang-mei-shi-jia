@@ -1,7 +1,11 @@
+import io
 import logging
+import random
 from pathlib import Path
 
 import aiosqlite
+from PIL import Image
+from bilibili_api import Picture
 from bilibili_api import video as bili_video
 from bilibili_api import Credential
 from bilibili_api.opus import Opus
@@ -59,7 +63,7 @@ def _extract_opus_text(info: dict) -> str:
     return "\n".join(parts) if parts else "(无文字内容)"
 
 
-async def _fetch_opus_data(opus_id: int, credential: Credential) -> tuple[str, list[str]]:
+async def fetch_opus_data(opus_id: int, credential: Credential) -> tuple[str, list[str]]:
     """Fetch dynamic text and image URLs for an opus. Returns (text, image_urls)."""
     op = Opus(opus_id=opus_id, credential=credential)
     try:
@@ -91,7 +95,7 @@ async def moderate_summary(
     import time
     moderation_result = await moderation_client.generate(
         prompt=MODERATION_PROMPT + text,
-        max_tokens=200,
+        max_tokens=500,
     )
     is_safe, reason = _parse_moderation_response(moderation_result)
     logger.info("[审核] AI %s: %s", "通过" if is_safe else "拦截", reason)
@@ -116,6 +120,45 @@ async def moderate_summary(
     return text
 
 
+async def get_cover_picture(bv_number: str) -> Picture | None:
+    """下载视频封面，随机 20-80% 比例作为镜像轴，将左侧镜像到右侧，生成左右对称图。"""
+    try:
+        v = bili_video.Video(bvid=bv_number)
+        info = await v.get_info()
+        cover_url = info.get("pic", "")
+        if not cover_url:
+            logger.warning("[封面] 未获取到封面 URL")
+            return None
+        if cover_url.startswith("http://"):
+            cover_url = "https://" + cover_url[7:]
+        if cover_url and not cover_url.rsplit("/", 1)[-1].split("?")[0].endswith((".jpg", ".jpeg", ".png", ".webp")):
+            cover_url += ".jpg"
+
+        logger.info("[封面] 下载: %s", cover_url)
+        pic = await Picture.load_url(cover_url)
+
+        axis_ratio = random.randint(20, 80)
+        axis_x = int(pic.width * axis_ratio / 100)
+
+        img = Image.open(io.BytesIO(pic.content))
+        left_half = img.crop((0, 0, axis_x, pic.height))
+        right_half = left_half.transpose(Image.FLIP_LEFT_RIGHT)
+
+        new_width = axis_x * 2
+        result = Image.new("RGB", (new_width, pic.height))
+        result.paste(left_half, (0, 0))
+        result.paste(right_half, (axis_x, 0))
+
+        output = io.BytesIO()
+        result.save(output, format="JPEG", quality=95)
+        cropped_pic = Picture.from_content(output.getvalue(), "jpg")
+        return cropped_pic
+
+    except Exception:
+        logger.exception("[封面] 获取/处理封面失败")
+        return None
+
+
 async def get_summary_from_video(bv_number: str) -> str:
     subtitle = get_subtitle_from_bv(bv_number)
     if subtitle is None:
@@ -135,7 +178,8 @@ async def get_summary_from_video(bv_number: str) -> str:
         tag_names: list[str] = []
         try:
             tags = await v.get_tags()
-            tag_names = [t.get("tag_name", "") for t in tags if t.get("tag_name")]
+            tag_names = [t.get("tag_name", "")
+                         for t in tags if t.get("tag_name")]
             logger.info("视频标签: %s", tag_names)
         except Exception:
             logger.warning("获取视频标签失败，继续")
@@ -193,7 +237,8 @@ async def get_summary_from_dynamic(dynamic_text: str, image_urls: list[str] | No
 
     images: list[str] | None = image_urls if llm_client.supports_multimodal else None
     if images:
-        logger.info("[动态] 多模态: images=%d text_len=%d", len(images), len(prompt))
+        logger.info("[动态] 多模态: images=%d text_len=%d",
+                    len(images), len(prompt))
 
     try:
         return await llm_client.generate(prompt, images=images, max_tokens=2000)

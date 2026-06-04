@@ -52,7 +52,8 @@ def note_query_2_aid(note_query: str):
     if note_query.startswith('BV'):
         aid = bv2aid(note_query)
     elif note_query.startswith('https://www.bilibili.com/video/BV'):
-        bv = note_query.split('https://www.bilibili.com/video/')[1].split('/')[0]
+        bv = note_query.split(
+            'https://www.bilibili.com/video/')[1].split('/')[0]
         aid = bv2aid(bv)
     else:
         aid = note_query
